@@ -13,17 +13,8 @@
         "RUNNER_TOKEN": "${fn.password(32)}",
         "GITLAB_SECRETS_BASE": "${fn.password(64)}",
         "ROOT_PASSWORD": "${fn.password(10)}",
-        "HTTP_SECRET": "${fn.password(10)}"
-    },
-    "settings": {
-        "fields": [{
-            "name": "repo",
-            "type": "string",
-            "caption": "Package Repo",
-            "default": "https://github.com/jelastic/docker-gitlab.git",
-            "required": true,
-            "vtype": "url"
-        }]
+        "HTTP_SECRET": "${fn.password(10)}",
+        "REPO_URL": "https://github.com/jelastic/docker-gitlab.git"
     },
     "nodes": [{
         "count": "1",
@@ -122,7 +113,7 @@
             "install": {
                 "jps": "${baseUrl}/docker-deploy.jps",
                 "settings": {
-                    "repo": "${settings.repo}",
+                    "repo": "${globals.REPO_URL}",
                     "type": "compose"
                 }
             }
