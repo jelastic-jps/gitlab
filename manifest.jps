@@ -47,20 +47,25 @@
         }
     }],
     "onBeforeServiceScaleOut[runner]": {
-        "forEach(event.response.nodes)": {
-            "runner-setup": {
-                "id": "${@i.id}"
-            },
-            "add-runner": {
+        "forEach(event.response.nodes)": [{
+            "set-runner-ssl": {
                 "id": "${@i.id}"
             }
-        }
+        }, {
+            "set-runner-vars": {
+                "id": "${@i.id}"
+            }
+        }, {
+            "register-runner": {
+                "id": "${@i.id}"
+            }
+        }]
     },
     "onInstall": [
         "install-ssl",
         "set-vars",
         "deploy", {
-            "add-runner": {
+            "register-runner": {
                 "id": "runner",
                 "nodeGroup": "runner"
             }
@@ -68,7 +73,7 @@
     ],
     "actions": {
         "set-vars": [{
-            "runner-setup": {
+            "set-runner-vars": {
                 "id": "runner"
             },
             "cmd[cp]": [
@@ -80,14 +85,6 @@
                 "echo HTTP_SECRET=${globals.HTTP_SECRET} >> /.jelenv"
             ]
         }],
-        "runner-setup": {
-            "cmd[${this.id}]": [
-                "echo CI_SERVER_URL=https://${env.domain}/ci >> /.jelenv",
-                "echo RUNNER_TOKEN=${globals.RUNNER_TOKEN} >> /.jelenv",
-                "echo DOCKER_IMAGE=docker:dind >> /.jelenv",
-                "service docker restart"
-            ]
-        },
         "install-ssl": [{
             "cmd[cp]": [
                 "mkdir -p /srv/docker/gitlab/certs",
@@ -98,15 +95,28 @@
                 "cp /srv/docker/gitlab/certs/registry-auth.crt /srv/docker/gitlab/certs/ca.crt"
             ]
         }, {
-            "cmd[runner]": [
+            "set-runner-ssl": {
+                "id": "runner"
+            }
+        }],
+        "set-runner-ssl": {
+            "cmd[${this.id}]": [
                 "yum install ca-certificates -y",
                 "update-ca-trust force-enable",
                 "while [ ! -f /srv/docker/gitlab-runner/certs/registry-auth.crt ]; do ls -l /srv/docker/gitlab-runner/certs; mount | grep certs; sleep 2; done",
                 "cp /srv/docker/gitlab-runner/certs/registry-auth.crt /etc/pki/ca-trust/source/anchors/",
                 "update-ca-trust extract"
             ]
-        }],
-        "add-runner": {
+        },
+        "set-runner-vars": {
+            "cmd[${this.id}]": [
+                "echo CI_SERVER_URL=https://${env.domain}/ci >> /.jelenv",
+                "echo RUNNER_TOKEN=${globals.RUNNER_TOKEN} >> /.jelenv",
+                "echo DOCKER_IMAGE=docker:dind >> /.jelenv",
+                "service docker restart"
+            ]
+        },
+        "register-runner": {
             "cmd[${this.id}]": "docker run --name gitlab-ci-multi-runner -d --restart=always --privileged -v /var/run/docker.sock:/var/run/docker.sock -v /srv/docker/gitlab-runner:/home/gitlab_ci_multi_runner/data -e=\"CI_SERVER_URL=$CI_SERVER_URL\" -e=\"RUNNER_TOKEN=$RUNNER_TOKEN\" -e=\"RUNNER_DESCRIPTION=docker\" -e=\"RUNNER_EXECUTOR=docker\" -e=\"RUNNER_DOCKER_IMAGE=$DOCKER_IMAGE\" digitallumberjack/docker-gitlab-ci-multi-runner"
         },
         "deploy": {
