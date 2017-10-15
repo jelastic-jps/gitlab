@@ -117,7 +117,7 @@
             ]
         },
         "register-runner": {
-            "cmd[${this.id}]": "docker run --name gitlab-ci-multi-runner -d --restart=always --privileged -v /var/run/docker.sock:/var/run/docker.sock -v /srv/docker/gitlab-runner:/home/gitlab_ci_multi_runner/data -e=\"CI_SERVER_URL=$CI_SERVER_URL\" -e=\"RUNNER_TOKEN=$RUNNER_TOKEN\" -e=\"RUNNER_DESCRIPTION=docker\" -e=\"RUNNER_EXECUTOR=docker\" -e=\"RUNNER_DOCKER_IMAGE=$DOCKER_IMAGE\" digitallumberjack/docker-gitlab-ci-multi-runner"
+            "cmd[${this.id}]": "docker run --name gitlab-runner -d --restart=always --privileged -v /var/run/docker.sock:/var/run/docker.sock -v /srv/docker/gitlab-runner:/home/gitlab_runner/data -e=\"CI_SERVER_URL=$CI_SERVER_URL\" -e=\"RUNNER_TOKEN=$RUNNER_TOKEN\" -e=\"RUNNER_DESCRIPTION=docker\" -e=\"RUNNER_EXECUTOR=docker\" -e=\"RUNNER_DOCKER_IMAGE=$DOCKER_IMAGE\" vivienm/gitlab-runner"
         },
         "deploy": {
             "install": {
