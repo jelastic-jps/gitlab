@@ -1,6 +1,6 @@
 {
     "jpsType": "install",
-    "id": "docker-engine",
+    "id": "gitlab-ci-cd",
     "baseUrl": "https://raw.githubusercontent.com/jelastic-jps/docker-native/master/addons",
     "description": {
         "text": "Master GitLab + Containers Registry + Runner",
