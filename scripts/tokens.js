@@ -45,7 +45,9 @@ if (!impToken) return {
 /** 
  * creating Jelastic API token
  */
-var apiList = ["environment.control.CreateEnvironment", "environment.control.RedeployContainersByGroup"];
+var apiList = ["environment.control.CreateEnvironment", 
+               "environment.control.RedeployContainersByGroup", 
+               "environment.control.GetEnvInfo"];
 var resp = jelastic.users.auth.CreateToken({
     session: session,
     apiList: apiList,
