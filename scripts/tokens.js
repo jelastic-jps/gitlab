@@ -60,7 +60,7 @@ resp = {
     onAfterReturn: {}
 };
 resp.onAfterReturn[next] = {
-    GIT_IMP_TOKEN: impToken,
+    GITLAB_IMP_TOKEN: impToken,
     J_TOKEN: jToken
 };
 return resp;
