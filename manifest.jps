@@ -8,6 +8,9 @@
     },
     "logo": "https://goo.gl/epR2KT",
     "name": "GitLab DevOps",
+    "targetRegions": {
+        "type": "vz7"
+    },
     "region": "vz7",
     "globals": {
         "RUNNER_TOKEN": "${fn.password(32)}",
