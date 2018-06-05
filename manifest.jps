@@ -1,140 +1,117 @@
-{
-    "jpsType": "install",
-    "id": "gitlab-ci-cd",
-    "baseUrl": "https://raw.githubusercontent.com/jelastic-jps/docker-native/master/addons",
-    "description": {
-        "text": "Master GitLab + Containers Registry + Runner",
-        "short": "GitLab DevOps Package"
-    },
-    "logo": "https://goo.gl/epR2KT",
-    "name": "GitLab DevOps",
-    "targetRegions": {
-        "type": "vz7"
-    },
-    "region": "vz7",
-    "globals": {
-        "RUNNER_TOKEN": "${fn.password(32)}",
-        "GITLAB_SECRETS_BASE": "${fn.password(64)}",
-        "ROOT_PASSWORD": "${fn.password(10)}",
-        "HTTP_SECRET": "${fn.password(10)}",
-        "REPO_URL": "https://github.com/jelastic/docker-gitlab.git"
-    },
-    "nodes": [{
-        "count": "1",
-        "cloudlets": 32,
-        "image": "jelastic/docker-ce-compose",
-        "nodeGroup": "cp",
-        "displayName": "Master",
-        "extip": "true",
-        "volumes": [
-            "/srv/docker/gitlab/certs"
-        ],
-        "env": {
-            "JELASTIC_EXPOSE": "10080"
-        }
-    }, {
-        "count": "1",
-        "cloudlets": 32,
-        "image": "jelastic/docker-ce",
-        "nodeGroup": "runner",
-        "displayName": "Runner",
-        "volumes": [
-            "/srv/docker/gitlab-runner/certs"
-        ],
-        "volumeMounts": {
-            "/srv/docker/gitlab-runner/certs": {
-                "sourcePath": "/srv/docker/gitlab/certs",
-                "sourceNodeGroup": "cp",
-                "readOnly": true
-            }
-        }
-    }],
-    "onBeforeServiceScaleOut[runner]": {
-        "forEach(event.response.nodes)": [{
-            "set-runner-ssl": {
-                "id": "${@i.id}"
-            }
-        }, {
-            "set-runner-vars": {
-                "id": "${@i.id}"
-            }
-        }, {
-            "register-runner": {
-                "id": "${@i.id}"
-            }
-        }]
-    },
-    "onInstall": [
-        "install-ssl",
-        "set-vars",
-        "deploy", {
-            "register-runner": {
-                "id": "runner",
-                "nodeGroup": "runner"
-            }
-        }
-    ],
-    "actions": {
-        "set-vars": [{
-            "set-runner-vars": {
-                "id": "runner"
-            },
-            "cmd[cp]": [
-                "echo GITLAB_HOST=${env.domain} >> /.jelenv",
-                "echo REGISTRY_HOST=${env.domain} >> /.jelenv",
-                "echo RUNNER_TOKEN=${globals.RUNNER_TOKEN} >> /.jelenv",
-                "echo GITLAB_SECRETS_BASE=${globals.GITLAB_SECRETS_BASE} >> /.jelenv",
-                "echo ROOT_PASSWORD=${globals.ROOT_PASSWORD} >> /.jelenv",
-                "echo HTTP_SECRET=${globals.HTTP_SECRET} >> /.jelenv"
-            ]
-        }],
-        "install-ssl": [{
-            "cmd[cp]": [
-                "mkdir -p /srv/docker/gitlab/certs",
-                "cd /srv/docker/gitlab/certs",
-                "openssl req -nodes -newkey rsa:4096 -keyout registry-auth.key -out registry-auth.csr -subj \"/CN=${env.domain}\"",
-                "openssl x509 -in registry-auth.csr -out registry-auth.crt -req -signkey registry-auth.key -days 3650",
-                "openssl dhparam -out dhparam.pem 2048",
-                "cp /srv/docker/gitlab/certs/registry-auth.crt /srv/docker/gitlab/certs/ca.crt"
-            ]
-        }, {
-            "set-runner-ssl": {
-                "id": "runner"
-            }
-        }],
-        "set-runner-ssl": {
-            "cmd[${this.id}]": [
-                "yum install ca-certificates -y",
-                "update-ca-trust force-enable",
-                "while [ ! -f /srv/docker/gitlab-runner/certs/registry-auth.crt ]; do ls -l /srv/docker/gitlab-runner/certs; mount | grep certs; sleep 2; done",
-                "cp /srv/docker/gitlab-runner/certs/registry-auth.crt /etc/pki/ca-trust/source/anchors/",
-                "update-ca-trust extract"
-            ]
-        },
-        "set-runner-vars": {
-            "cmd[${this.id}]": [
-                "echo CI_SERVER_URL=https://${env.domain}/ci >> /.jelenv",
-                "echo RUNNER_TOKEN=${globals.RUNNER_TOKEN} >> /.jelenv",
-                "echo DOCKER_IMAGE=docker:dind >> /.jelenv",
-                "service docker restart"
-            ]
-        },
-        "register-runner": {
-            "cmd[${this.id}]": "docker run --name gitlab-runner -d --restart=always --privileged -v /var/run/docker.sock:/var/run/docker.sock -v /srv/docker/gitlab-runner:/home/gitlab_runner/data -e=\"CI_SERVER_URL=$CI_SERVER_URL\" -e=\"RUNNER_TOKEN=$RUNNER_TOKEN\" -e=\"RUNNER_DESCRIPTION=docker\" -e=\"RUNNER_EXECUTOR=docker\" -e=\"RUNNER_DOCKER_IMAGE=$DOCKER_IMAGE\" vivienm/gitlab-runner"
-        },
-        "deploy": {
-            "install": {
-                "jps": "${baseUrl}/docker-deploy.jps",
-                "settings": {
-                    "repo": "${globals.REPO_URL}",
-                    "type": "compose"
-                }
-            }
-        }
-    },
-    "success": {
-        "text": "Password: ${globals.ROOT_PASSWORD}",
-        "email": "Password: ${globals.ROOT_PASSWORD}"
-    },
-    "jpsVersion": "1.1"
-}
+---
+type: install
+version: 1.4
+id: gitlab-ci-cd
+baseUrl: https://raw.githubusercontent.com/jelastic-jps/docker-native/master/addons
+description:
+  text: GitLab Server + Containers Registry + Runners
+  short: GitLab DevOps Package
+logo: https://goo.gl/epR2KT
+name: GitLab DevOps
+targetRegions:
+  type: vz7
+globals:
+  DB_USER: gitlab-${fn.password(5)}
+  DB_PASSWORD: ${fn.password(32)}
+  RUNNER_TOKEN: ${fn.password(32)}
+  GITLAB_SECRETS_BASE: ${fn.password(64)}
+  ROOT_PASSWORD: ${fn.password(16)}
+  HTTP_SECRET: ${fn.password(32)}
+  REPO_URL: https://github.com/jelastic-jps/docker-gitlab.git
+  
+nodes:
+- count: 1
+  cloudlets: 32
+  image: jelastic/docker-ce
+  nodeGroup: cp
+  displayName: GitLab Server
+  extip: true
+  volumes:
+  - /srv/docker/gitlab/certs
+  env:
+    JELASTIC_EXPOSE: 10080
+    RUNNER_TOKEN: ${globals.RUNNER_TOKEN}
+    GITLAB_SECRETS_BASE: ${globals.GITLAB_SECRETS_BASE}
+    ROOT_PASSWORD: ${globals.ROOT_PASSWORD}
+    HTTP_SECRET: ${globals.HTTP_SECRET}
+    DB_USER: ${globals.DB_USER}
+    DB_PASSWORD: ${globals.DB_PASSWORD}
+  startService: false
+
+- count: 1
+  cloudlets: 32
+  image: jelastic/docker-ce
+  nodeGroup: runner
+  displayName: Runners
+  links: cp:gitlab
+  env: 
+    RUNNER_TOKEN: ${globals.RUNNER_TOKEN}
+    DOCKER_IMAGE: docker:dind
+  volumes:
+  - /srv/docker/gitlab-runner/certs
+  volumeMounts:
+    /srv/docker/gitlab-runner/certs:
+      sourcePath: /srv/docker/gitlab/certs
+      sourceNodeGroup: cp
+      readOnly: true
+
+onBeforeServiceScaleOut[runner]:
+  forEach(event.response.nodes):
+    - set-runner-ssl:
+        id: ${@i.id}
+        
+onAfterServiceScaleOut[runner]:
+  forEach(event.response.nodes):
+    - register-runner:
+        id: ${@i.id}
+        
+onInstall:
+  - add-env-vars
+  - install-ssl
+  - deploy
+  - register-runner:
+      id: runner
+actions:
+  add-env-vars:
+   - api: env.control.AddContainerEnvVars
+     nodeGroup: cp
+     vars: {"GITLAB_HOST": "${env.domain}", "REGISTRY_HOST": "${env.domain}"}
+   - api: env.control.AddContainerEnvVars
+     nodeGroup: runner
+     vars: {"CI_SERVER_URL": "https://${env.domain}/ci"}
+   - api: env.control.ExecDockerRunCmd
+     nodeId: ${nodes.cp.first.id}
+     
+  install-ssl:
+  - cmd[cp]: |-
+      mkdir -p /srv/docker/gitlab/certs
+      cd /srv/docker/gitlab/certs
+      openssl req -nodes -newkey rsa:4096 -keyout registry-auth.key -out registry-auth.csr -subj "/CN=${env.domain}"
+      openssl x509 -in registry-auth.csr -out registry-auth.crt -req -signkey registry-auth.key -days 3650
+      openssl dhparam -out dhparam.pem 2048
+      cp /srv/docker/gitlab/certs/registry-auth.crt /srv/docker/gitlab/certs/ca.crt
+  - set-runner-ssl:
+      id: runner
+  set-runner-ssl:
+    cmd[${this.id}]: |-
+      yum install ca-certificates -y
+      update-ca-trust force-enable
+      while [ ! -f /srv/docker/gitlab-runner/certs/registry-auth.crt ]; do ls -l /srv/docker/gitlab-runner/certs; mount | grep certs; sleep 2; done
+      cp /srv/docker/gitlab-runner/certs/registry-auth.crt /etc/pki/ca-trust/source/anchors/
+      update-ca-trust extract
+
+  register-runner:
+    cmd[${this.id}]: docker run --name gitlab-runner -d --restart=always --privileged
+      -v /var/run/docker.sock:/var/run/docker.sock -v /srv/docker/gitlab-runner:/home/gitlab_runner/data
+      -e="CI_SERVER_URL=$CI_SERVER_URL" -e="RUNNER_TOKEN=$RUNNER_TOKEN" -e="RUNNER_DESCRIPTION=docker"
+      -e="RUNNER_EXECUTOR=docker" -e="RUNNER_DOCKER_IMAGE=$DOCKER_IMAGE" vivienm/gitlab-runner
+  deploy:
+    install:
+      jps: ${baseUrl}/docker-deploy.jps
+      settings:
+        repo: ${globals.REPO_URL}
+        type: compose
+success: |
+    GitLab URL: [https://${env.domain}](https://${env.domain})  
+    User: root  
+    Password: ${globals.ROOT_PASSWORD}  
