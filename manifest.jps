@@ -4,7 +4,7 @@ version: 1.4
 id: gitlab-ci-cd
 baseUrl: https://raw.githubusercontent.com/jelastic-jps/docker-native/master/addons
 description:
-  text: GitLab Server + Containers Registry + Runners
+  text: GitLab Server + Container Registry + Build Nodes (Runners)
   short: GitLab DevOps Package
 logo: https://goo.gl/epR2KT
 name: GitLab DevOps
