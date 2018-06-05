@@ -17,7 +17,7 @@ globals:
   GITLAB_SECRETS_BASE: ${fn.password(64)}
   ROOT_PASSWORD: ${fn.password(16)}
   HTTP_SECRET: ${fn.password(32)}
-  REPO_URL: https://github.com/jelastic-jps/docker-gitlab.git
+  REPO_URL: https://github.com/jelastic/docker-gitlab.git
   
 nodes:
 - count: 1
