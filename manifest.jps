@@ -27,7 +27,7 @@ nodes:
   displayName: GitLab Server
   extip: true
   volumes:
-  - /srv/docker/gitlab/certs
+  - /srv/docker/gitlab
   env:
     JELASTIC_EXPOSE: 10080
     RUNNER_TOKEN: ${globals.RUNNER_TOKEN}
