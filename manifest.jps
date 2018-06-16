@@ -132,7 +132,7 @@ actions:
         dir=${globals.CERTS}_self
         [ ! -d "$dir" ] && { mkdir -p $dir; yes | cp ${globals.CERTS}/* $dir; }
         printf '#!/bin/bash
-        mkdir -p $(dirname ${globals.deployHook})
+        mkdir -p $(dirname ${globals.DEPLOY_HOOK})
         yes | cp /var/lib/jelastic/keys/cert.pem ${globals.CERTS}/ca.crt
         yes | cp /var/lib/jelastic/keys/cert.pem ${globals.CERTS}/registry-auth.crt
         yes | cp /var/lib/jelastic/keys/privkey.pem ${globals.CERTS}/registry-auth.key
@@ -151,5 +151,3 @@ success: |
     GitLab URL: [https://${env.domain}](https://${env.domain})  
     User: root  
     Password: ${globals.ROOT_PASSWORD} 
-
-
