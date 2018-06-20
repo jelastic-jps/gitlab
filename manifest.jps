@@ -27,6 +27,7 @@ globals:
   HTTP_SECRET: ${fn.password(32)}
   REPO_URL: https://github.com/jelastic/docker-gitlab.git
   DEPLOY_HOOK: /root/deployLE.sh
+  UNDEPLOY_HOOK: /root/undeployLE.sh
   CERTS: /srv/docker/gitlab/certs
   
 nodes:
@@ -134,17 +135,22 @@ actions:
         [ ! -d "$dir" ] && { mkdir -p $dir; yes | cp ${globals.CERTS}/* $dir; }
         printf '#!/bin/bash
         mkdir -p $(dirname ${globals.DEPLOY_HOOK})
-        yes | cp /var/lib/jelastic/keys/cert.pem ${globals.CERTS}/ca.crt
-        yes | cp /var/lib/jelastic/keys/cert.pem ${globals.CERTS}/registry-auth.crt
-        yes | cp /var/lib/jelastic/keys/privkey.pem ${globals.CERTS}/registry-auth.key
-        yes | cp /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/registry-auth.csr
+        yes | cp -f /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/ca.crt
+        yes | cp -f /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/registry-auth.crt
+        yes | cp -f /var/lib/jelastic/keys/privkey.pem ${globals.CERTS}/registry-auth.key
         docker restart gitlab_gitlab_1' > ${globals.DEPLOY_HOOK}
+        
+        printf '#!/bin/bash
+        mkdir -p $(dirname ${globals.UNDEPLOY_HOOK})
+        yes | cp -f ${globals.CERTS}_self/* ${globals.CERTS}
+        docker restart gitlab_gitlab_1' > ${globals.UNDEPLOY_HOOK}        
         
     - install:
         jps: https://raw.githubusercontent.com/jelastic-jps/lets-encrypt/master/manifest.jps?_r=${fn.random}
         nodeGroup: cp
         settings:
           deployHook: ${globals.DEPLOY_HOOK}
+          undeployHook: ${globals.UNDEPLOY_HOOK}
           
     - cmd[runner]: docker restart gitlab-runner
 
@@ -152,5 +158,4 @@ success: |
     GitLab URL: [https://${env.domain}](https://${env.domain})  
     User: root  
     Password: ${globals.ROOT_PASSWORD} 
-
 
