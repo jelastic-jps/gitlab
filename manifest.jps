@@ -16,7 +16,8 @@ settings:
     - type: checkbox
       name: le-addon
       caption: Install Let's Encrypt Certificates Addon
-      value: true
+      value: false
+      inputType: hidden
     
 globals:
   DB_USER: gitlab-${fn.password(5)}
@@ -59,7 +60,7 @@ nodes:
   links: cp:gitlab
   env: 
     RUNNER_TOKEN: ${globals.RUNNER_TOKEN}
-    DOCKER_IMAGE: docker:dind
+    DOCKER_IMAGE: docker:stable
   volumes:
   - /srv/docker/gitlab-runner/certs
   volumeMounts:
@@ -107,6 +108,7 @@ actions:
         openssl x509 -in registry-auth.csr -out registry-auth.crt -req -signkey registry-auth.key -days 3650
         openssl dhparam -out dhparam.pem 2048
         cp ${globals.CERTS}/registry-auth.crt ${globals.CERTS}/ca.crt
+
     - set-runner-ssl:
         id: runner
         
@@ -119,10 +121,30 @@ actions:
       update-ca-trust extract
 
   register-runner:
-    cmd[${this.id}]: docker run --name gitlab-runner -d --restart=always --privileged
-      -v /var/run/docker.sock:/var/run/docker.sock -v /srv/docker/gitlab-runner:/home/gitlab_runner/data
-      -e="CI_SERVER_URL=$CI_SERVER_URL" -e="RUNNER_TOKEN=$RUNNER_TOKEN" -e="RUNNER_DESCRIPTION=docker"
-      -e="RUNNER_EXECUTOR=docker" -e="RUNNER_DOCKER_IMAGE=$DOCKER_IMAGE" vivienm/gitlab-runner
+    cmd[${this.id}]: |-
+      until docker run --rm --privileged --name gitlab-runner \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -v /srv/docker/gitlab-runner:/etc/gitlab-runner \
+      gitlab/gitlab-runner register \
+      --non-interactive \
+      --executor "docker" \
+      --docker-image "$DOCKER_IMAGE" \
+      --docker-volumes /var/run/docker.sock:/var/run/docker.sock \
+      --docker-privileged \
+      --url "$CI_SERVER_URL" \
+      --registration-token "$RUNNER_TOKEN" \
+      --description "docker-runner" \
+      --tag-list "" \
+      --run-untagged \
+      --locked="false"
+      do
+        sleep 2;
+      done
+
+      docker run -d --privileged --name gitlab-runner --restart always \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -v /srv/docker/gitlab-runner:/etc/gitlab-runner \
+      gitlab/gitlab-runner 
       
   deploy:
     cmd[cp]: |-
@@ -158,4 +180,3 @@ success: |
     GitLab URL: [https://${env.domain}](https://${env.domain})  
     User: root  
     Password: ${globals.ROOT_PASSWORD} 
-
