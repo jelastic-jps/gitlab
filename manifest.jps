@@ -17,7 +17,6 @@ settings:
       name: le-addon
       caption: Install Let's Encrypt Certificates Addon
       value: false
-      inputType: hidden
     
 globals:
   DB_USER: gitlab-${fn.password(5)}
@@ -116,8 +115,8 @@ actions:
     cmd[${this.id}]: |-
       yum install ca-certificates -y
       update-ca-trust force-enable
-      while [ ! -f /srv/docker/gitlab-runner/certs/registry-auth.crt ]; do ls -l /srv/docker/gitlab-runner/certs; mount | grep certs; sleep 2; done
-      cp /srv/docker/gitlab-runner/certs/registry-auth.crt /etc/pki/ca-trust/source/anchors/
+      while [ ! -f /srv/docker/gitlab-runner/certs/ca.crt ]; do ls -l /srv/docker/gitlab-runner/certs; mount | grep certs; sleep 2; done
+      cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/ca-trust/source/anchors/
       update-ca-trust extract
 
   register-runner:
@@ -157,15 +156,16 @@ actions:
         [ ! -d "$dir" ] && { mkdir -p $dir; yes | cp ${globals.CERTS}/* $dir; }
         printf '#!/bin/bash
         mkdir -p $(dirname ${globals.DEPLOY_HOOK})
-        yes | cp -f /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/ca.crt
+        #wget https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem -O ${globals.CERTS}/ca.crt
+        wget https://letsencrypt.org/certs/fakelerootx1.pem -O ${globals.CERTS}/ca.crt
         yes | cp -f /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/registry-auth.crt
         yes | cp -f /var/lib/jelastic/keys/privkey.pem ${globals.CERTS}/registry-auth.key
-        docker restart gitlab_gitlab_1' > ${globals.DEPLOY_HOOK}
+        service docker restart' > ${globals.DEPLOY_HOOK}
         
         printf '#!/bin/bash
         mkdir -p $(dirname ${globals.UNDEPLOY_HOOK})
         yes | cp -f ${globals.CERTS}_self/* ${globals.CERTS}
-        docker restart gitlab_gitlab_1' > ${globals.UNDEPLOY_HOOK}        
+        service docker restart' > ${globals.UNDEPLOY_HOOK}        
         
     - install:
         jps: https://raw.githubusercontent.com/jelastic-jps/lets-encrypt/master/manifest.jps?_r=${fn.random}
@@ -173,8 +173,12 @@ actions:
         settings:
           deployHook: ${globals.DEPLOY_HOOK}
           undeployHook: ${globals.UNDEPLOY_HOOK}
+          _customDomains: ${env.domain}
           
-    - cmd[runner]: docker restart gitlab-runner
+    - cmd[runner]: |-
+        cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/ca-trust/source/anchors/
+        update-ca-trust extract
+        service docker restart
 
 success: |
     GitLab URL: [https://${env.domain}](https://${env.domain})  
