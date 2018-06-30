@@ -123,7 +123,7 @@ actions:
     cmd[${this.id}]: |-
       until docker run --rm --privileged --name gitlab-runner \
       -v /var/run/docker.sock:/var/run/docker.sock \
-      -v /srv/docker/gitlab-runner:/etc/gitlab-runner \
+      -v /srv/docker/gitlab-runner:/etc/gitlab-runner:shared \
       gitlab/gitlab-runner register \
       --non-interactive \
       --executor "docker" \
@@ -142,7 +142,7 @@ actions:
 
       docker run -d --privileged --name gitlab-runner --restart always \
       -v /var/run/docker.sock:/var/run/docker.sock \
-      -v /srv/docker/gitlab-runner:/etc/gitlab-runner \
+      -v /srv/docker/gitlab-runner:/etc/gitlab-runner:shared \
       gitlab/gitlab-runner 
       
   deploy:
