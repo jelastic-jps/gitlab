@@ -24,9 +24,10 @@ resp = jelastic.env.control.AddContainerEnvVars({
     }
 });
 
+//rewriting server url in /srv/docker/gitlab-runner/config.toml 
 //executing custom deployment hook script on master node
 if (resp.result != 0) return resp
-resp = jelastic.env.control.ExecCmdById(envName, session, getParam('nodeId'), toJSON([{ command:'/bin/bash deployLE.sh'}]), true);
+resp = jelastic.env.control.ExecCmdById(envName, session, getParam('nodeId'), toJSON([{ command:'sed -i "s|https://.*|https://$CI_SERVER_URL/ci\"|g" /srv/docker/gitlab-runner/config.toml && /bin/bash deployLE.sh'}]), true);
 
 //restarting runners
 if (resp.result != 0) return resp;
