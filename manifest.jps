@@ -103,9 +103,9 @@ actions:
     - cmd[cp]: |-
         mkdir -p ${globals.CERTS}
         cd ${globals.CERTS}
-        openssl req -nodes -newkey rsa:4096 -keyout registry-auth.key -out registry-auth.csr -subj "/CN=${env.domain}"
-        openssl x509 -in registry-auth.csr -out registry-auth.crt -req -signkey registry-auth.key -days 3650
-        openssl dhparam -out dhparam.pem 2048
+        openssl req -nodes -newkey rsa:4096 -keyout registry-auth.key -out registry-auth.csr -subj "/CN=${env.domain}" &>> /var/log/run.log
+        openssl x509 -in registry-auth.csr -out registry-auth.crt -req -signkey registry-auth.key -days 3650 &>> /var/log/run.log
+        openssl dhparam -out dhparam.pem 2048 &>> /var/log/run.log
         cp ${globals.CERTS}/registry-auth.crt ${globals.CERTS}/ca.crt
 
     - set-runner-ssl:
@@ -171,9 +171,9 @@ actions:
         jps: https://raw.githubusercontent.com/SlavaKatiukha/lets-encrypt/hooks/manifest.jps?_r=${fn.random}
         nodeGroup: cp
         settings:
-          deployHook: ${baseUrl}/scripts/deployHook.js
+          deployHook: ${baseUrl}/scripts/deployHook.js?_r=${fn.random}
           deployHookType: js
-          undeployHook: ${baseUrl}/scripts/undeployHook.js
+          undeployHook: ${baseUrl}/scripts/undeployHook.js?_r=${fn.random}
           undeployHookType: js
           _customDomains: ${env.domain}
           
