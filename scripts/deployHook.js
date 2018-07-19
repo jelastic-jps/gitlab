@@ -15,6 +15,12 @@ resp = jelastic.env.control.AddContainerEnvVars({
     }
 });
 
+//restart with new env variables 
+//executing custom deployment hook script on master node
+if (resp.result != 0) return resp
+resp = jelastic.env.control.ExecCmdById(envName, session, getParam('nodeId'), toJSON([{ command:'docker-compose up -d && /bin/bash deployLE.sh'}]), true);
+
+
 resp = jelastic.env.control.AddContainerEnvVars({
     envName: envName,
     session: session,
@@ -25,10 +31,6 @@ resp = jelastic.env.control.AddContainerEnvVars({
 });
 
 //rewriting server url in /srv/docker/gitlab-runner/config.toml 
-//executing custom deployment hook script on master node
-if (resp.result != 0) return resp
-resp = jelastic.env.control.ExecCmdById(envName, session, getParam('nodeId'), toJSON([{ command:'sed -i "s|https://.*|https://$CI_SERVER_URL/ci\"|g" /srv/docker/gitlab-runner/config.toml && /bin/bash deployLE.sh'}]), true);
-
-//restarting runners
+//and restarting runners
 if (resp.result != 0) return resp;
-return jelastic.env.control.ExecCmdByGroup(envName, session, 'runner', toJSON([{ command:'service docker restart'}]), true, true);
+return jelastic.env.control.ExecCmdByGroup(envName, session, 'runner', toJSON([{ command:'sed -i "s|https://.*|https://$CI_SERVER_URL/ci\"|g" /srv/docker/gitlab-runner/config.toml && service docker restart'}]), true, true);
