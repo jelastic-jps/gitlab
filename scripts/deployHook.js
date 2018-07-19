@@ -33,4 +33,4 @@ resp = jelastic.env.control.AddContainerEnvVars({
 //rewriting server url in /srv/docker/gitlab-runner/config.toml 
 //and restarting runners
 if (resp.result != 0) return resp;
-return jelastic.env.control.ExecCmdByGroup(envName, session, 'runner', toJSON([{ command:'sed -i "s|https.*$|$CI_SERVER_URL\"|g" /srv/docker/gitlab-runner/config.toml && service docker restart'}]), true, true);
+return jelastic.env.control.ExecCmdByGroup(envName, session, 'runner', toJSON([{ command:'sed -i "s|https.*$|$CI_SERVER_URL\\"|g" /srv/docker/gitlab-runner/config.toml && service docker restart'}]), true, true);
