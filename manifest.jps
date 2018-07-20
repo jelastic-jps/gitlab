@@ -192,7 +192,4 @@ actions:
         docker rm -f gitlab-runner
         ${globals.RUN_RUNNER}
 
-success: |
-    GitLab URL: [https://${env.domain}](https://${env.domain})  
-    User: root  
-    Password: ${globals.ROOT_PASSWORD} 
+success: /text/success.md
