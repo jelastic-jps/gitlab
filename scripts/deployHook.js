@@ -4,7 +4,7 @@ envDomain = getParam('envDomain');
 customDomains = (getParam('customDomains') || "").replace(/^\s+|\s+$/gm , "").split(/\s*[;,\s]\s*/).shift(); 
 domain = customDomains || envDomain;
 
-//redefining domain name
+//redefining domain name in cp layer
 resp = jelastic.env.control.AddContainerEnvVars({
     envName: envName,
     session: session,
@@ -14,13 +14,14 @@ resp = jelastic.env.control.AddContainerEnvVars({
         REGISTRY_HOST: domain
     }
 });
+if (resp.result != 0) return resp;
 
 //restart with new env variables 
 //executing custom deployment hook script on master node
-if (resp.result != 0) return resp
-resp = jelastic.env.control.ExecCmdById(envName, session, getParam('nodeId'), toJSON([{ command:'cd gitlab && docker-compose up -d && cd .. && /bin/bash deployLE.sh'}]), true);
+scriptName = getParam('action') == 'install' ? 'deployLE.sh' : 'undeployLE.sh';
+resp = jelastic.env.control.ExecCmdById(envName, session, getParam('nodeId'), toJSON([{ command:'cd gitlab && docker-compose up -d && cd .. && /bin/bash ' + scriptName}]), true);
 
-
+//redefining domain name in runner
 resp = jelastic.env.control.AddContainerEnvVars({
     envName: envName,
     session: session,
@@ -29,8 +30,8 @@ resp = jelastic.env.control.AddContainerEnvVars({
         CI_SERVER_URL: "https://"+domain+"/ci"
     }
 });
+if (resp.result != 0) return resp;
 
 //rewriting server url in /srv/docker/gitlab-runner/config.toml 
 //and restarting runners
-if (resp.result != 0) return resp;
 return jelastic.env.control.ExecCmdByGroup(envName, session, 'runner', toJSON([{ command:'sed -i "s|https.*$|$CI_SERVER_URL\\"|g" /srv/docker/gitlab-runner/config.toml && service docker restart'}]), true, true);
