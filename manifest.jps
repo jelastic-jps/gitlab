@@ -29,6 +29,11 @@ globals:
   DEPLOY_HOOK: /root/deployLE.sh
   UNDEPLOY_HOOK: /root/undeployLE.sh
   CERTS: /srv/docker/gitlab/certs
+  RUN_RUNNER: |-
+    docker run -d --privileged --name gitlab-runner --restart always \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -v /srv/docker/gitlab-runner:/etc/gitlab-runner:shared \
+      gitlab/gitlab-runner &>> /var/log/run.log
   
 nodes:
 - count: 1
@@ -135,20 +140,17 @@ actions:
       --description "docker-runner" \
       --tag-list "" \
       --run-untagged \
-      --locked="false"
+      --locked="false" &>> /var/log/run.log
       do
         sleep 2;
       done
 
-      docker run -d --privileged --name gitlab-runner --restart always \
-      -v /var/run/docker.sock:/var/run/docker.sock \
-      -v /srv/docker/gitlab-runner:/etc/gitlab-runner:shared \
-      gitlab/gitlab-runner 
+      ${globals.RUN_RUNNER}
       
   deploy:
     cmd[cp]: |-
-      git clone ${globals.REPO_URL} gitlab >> /var/log/run.log
-      cd gitlab && docker-compose up -d >> /var/log/run.log
+      git clone ${globals.REPO_URL} gitlab &>> /var/log/run.log
+      cd gitlab && docker-compose up -d &>> /var/log/run.log
 
   installLE:
     - cmd[cp]: |-
@@ -181,6 +183,14 @@ actions:
         cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/ca-trust/source/anchors/
         update-ca-trust extract
         service docker restart
+        
+  update:
+    - cmd[cp]: |-
+        cd gitlab && git pull origin master &>> /var/log/run.log
+        docker-compose up -d &>> /var/log/run.log
+    - cmd[runner]: |-
+        docker rm -f gitlab-runner
+        ${globals.RUN_RUNNER}
 
 success: |
     GitLab URL: [https://${env.domain}](https://${env.domain})  
