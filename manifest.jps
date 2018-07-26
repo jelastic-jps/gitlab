@@ -84,14 +84,15 @@ onAfterServiceScaleOut[runner]:
   forEach(event.response.nodes):
     - register-runner:
         id: ${@i.id}
-        
+
 onInstall:
   - add-env-vars
   - install-ssl
   - deploy
   - register-runner:
       id: runner
-  - if (${settings.le-addon}): installLE
+  - if (${settings.le-addon}): install-LE
+  - install-update-addon
   
 actions:
   add-env-vars:
@@ -152,7 +153,7 @@ actions:
       git clone ${globals.REPO_URL} gitlab &>> /var/log/run.log
       cd gitlab && docker-compose up -d &>> /var/log/run.log
 
-  installLE:
+  install-LE:
     - cmd[cp]: |-
         dir=${globals.CERTS}_self
         [ ! -d "$dir" ] && { mkdir -p $dir; yes | cp ${globals.CERTS}/* $dir; }
@@ -184,12 +185,28 @@ actions:
         update-ca-trust extract
         service docker restart
         
-  update:
-    - cmd[cp]: |-
-        cd gitlab && git pull origin master &>> /var/log/run.log
-        docker-compose up -d &>> /var/log/run.log
-    - cmd[runner]: |-
-        docker rm -f gitlab-runner
-        ${globals.RUN_RUNNER}
+  install-update-addon:
+    install:
+      nodeGroup: cp  
+      jps:
+        type: update
+        id: update-git-lab
+        name: GitLab Server Automated Update
+        description: Use the button below to initiate the update proccedure
+        buttons:
+          - caption: Update Now
+            action: update
+            loadingText: Updating...
+            confirmText: Do you want to update GitLab Server?
+            successText: GitLab Server has been successfully updated!
+        actions:
+          update:
+            - cmd[cp]: |-
+                cd gitlab && git pull origin master &>> /var/log/run.log
+                docker-compose up -d &>> /var/log/run.log
+            - cmd[runner]: |-
+                docker rm -f gitlab-runner
+                ${globals.RUN_RUNNER}    
+        
 
 success: /text/success.md
