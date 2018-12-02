@@ -18,7 +18,14 @@ settings:
       name: le-addon
       caption: Install Let's Encrypt Certificates Addon
       value: false
-    
+
+onBeforeInit: |  
+  var resp = jelastic.billing.account.GetQuotas(appid, session, 'environment.externalip.enabled');
+  if (resp.result != 0) return resp;  
+  var r = {result:0}
+  if (!resp.array[0].value) r.settings = {}; 
+  return r;
+
 globals:
   DB_USER: gitlab-${fn.password(5)}
   DB_PASSWORD: ${fn.password(32)}
@@ -30,6 +37,7 @@ globals:
   DEPLOY_HOOK: /root/deployLE.sh
   UNDEPLOY_HOOK: /root/undeployLE.sh
   CERTS: /srv/docker/gitlab/certs
+  HTTPS_PORT: 443
   RUN_RUNNER: |-
     docker run -d --privileged --name gitlab-runner --restart always \
       -v /var/run/docker.sock:/var/run/docker.sock \
@@ -42,7 +50,6 @@ nodes:
   image: jelastic/docker-ce
   nodeGroup: cp
   displayName: GitLab Server
-  extip: true
   volumes:
   - /srv/docker/gitlab
   - /root
@@ -56,6 +63,7 @@ nodes:
     DB_PASSWORD: ${globals.DB_PASSWORD}
     USER_EMAIL: ${user.email}
   startService: false
+  extip: ${settings.le-addon:false}
 
 - count: 1
   cloudlets: 32
@@ -70,11 +78,12 @@ nodes:
   - /srv/docker/gitlab-runner/certs
   volumeMounts:
     /srv/docker/gitlab-runner/certs:
-      sourcePath: ${globals.CERTS}
+      sourcePath: ${globals.CERTS}/gitlab
       sourceNodeGroup: cp
       readOnly: true
 
 skipNodeEmails: true  
+
 
 onBeforeServiceScaleOut[runner]:
   forEach(event.response.nodes):
@@ -87,33 +96,40 @@ onAfterServiceScaleOut[runner]:
         id: ${@i.id}
 
 onInstall:
+  - if (!${settings.le-addon:false}): 
+      - setGlobals: 
+          HTTPS_PORT: 4848
   - add-env-vars
   - install-ssl
   - deploy
   - register-runner:
       id: runner
-  - if (${settings.le-addon}): install-LE
+  - if (${settings.le-addon}): 
+      - install-LE      
+    
   - install-update-addon
   
 actions:
   add-env-vars:
     - api: env.control.AddContainerEnvVars
       nodeGroup: cp
-      vars: {"GITLAB_HOST": "${env.domain}", "REGISTRY_HOST": "${env.domain}"}
+      vars: {"GITLAB_HOST": "${env.domain}", "REGISTRY_HOST": "${env.domain}", "HTTPS_PORT": "${globals.HTTPS_PORT}"}
     - api: env.control.AddContainerEnvVars
       nodeGroup: runner
-      vars: {"CI_SERVER_URL": "https://${env.domain}/ci"}
+      vars: {"CI_SERVER_URL": "https://${env.domain}:${globals.HTTPS_PORT}/ci"}
     - api: env.control.ExecDockerRunCmd
       nodeId: ${nodes.cp.first.id}
 
   install-ssl:
     - cmd[cp]: |-
-        mkdir -p ${globals.CERTS}
-        cd ${globals.CERTS}
-        openssl req -nodes -newkey rsa:4096 -keyout registry-auth.key -out registry-auth.csr -subj "/CN=${env.domain}" &>> /var/log/run.log
-        openssl x509 -in registry-auth.csr -out registry-auth.crt -req -signkey registry-auth.key -days 3650 &>> /var/log/run.log
+        mkdir -p ${globals.CERTS}/gitlab
+        cd ${globals.CERTS}/gitlab
+        openssl req -nodes -newkey rsa:4096 -keyout auth.key -out auth.csr -subj "/CN=${env.domain}" &>> /var/log/run.log                       
+        openssl x509 -req -extfile <(printf "subjectAltName=DNS:${env.domain},DNS:registry") -in auth.csr -out auth.crt -signkey auth.key -days 3650 &>> /var/log/run.log
         openssl dhparam -out dhparam.pem 2048 &>> /var/log/run.log
-        cp ${globals.CERTS}/registry-auth.crt ${globals.CERTS}/ca.crt
+        cp auth.crt ca.crt
+        mkdir -p ${globals.CERTS}/registry
+        yes | cp -f ${globals.CERTS}/gitlab/* ${globals.CERTS}/registry
 
     - set-runner-ssl:
         id: runner
@@ -155,20 +171,21 @@ actions:
       cd gitlab && docker-compose up -d &>> /var/log/run.log
 
   install-LE:
+      
     - cmd[cp]: |-
-        dir=${globals.CERTS}_self
-        [ ! -d "$dir" ] && { mkdir -p $dir; yes | cp ${globals.CERTS}/* $dir; }
+        dir=${globals.CERTS}/gitlab_self
+        [ ! -d "$dir" ] && { mkdir -p $dir; yes | cp ${globals.CERTS}/gitlab/* $dir; }
         printf '#!/bin/bash
         mkdir -p $(dirname ${globals.DEPLOY_HOOK})
-        #wget https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem -O ${globals.CERTS}/ca.crt
-        wget https://letsencrypt.org/certs/fakelerootx1.pem -O ${globals.CERTS}/ca.crt
-        yes | cp -f /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/registry-auth.crt
-        yes | cp -f /var/lib/jelastic/keys/privkey.pem ${globals.CERTS}/registry-auth.key
+        #wget https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem -O ${globals.CERTS}/gitlab/ca.crt
+        wget https://letsencrypt.org/certs/fakelerootx1.pem -O ${globals.CERTS}/gitlab/ca.crt
+        yes | cp -f /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/gitlab/auth.crt
+        yes | cp -f /var/lib/jelastic/keys/privkey.pem ${globals.CERTS}/gitlab/auth.key
         service docker restart' > ${globals.DEPLOY_HOOK}
         
         printf '#!/bin/bash
         mkdir -p $(dirname ${globals.UNDEPLOY_HOOK})
-        yes | cp -f ${globals.CERTS}_self/* ${globals.CERTS}
+        yes | cp -f ${globals.CERTS}/gitlab_self/* ${globals.CERTS}/gitlab
         service docker restart' > ${globals.UNDEPLOY_HOOK}        
         
     - install:
