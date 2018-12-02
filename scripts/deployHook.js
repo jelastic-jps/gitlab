@@ -1,6 +1,6 @@
 envName = getParam('envName');
 envDomain = getParam('envDomain');
-httpsPort = "${globals.HTTPS_PORT}";
+httpsPort =  getParam('httpsPort');
 //getting first custom domain
 customDomains = (getParam('customDomains') || "").replace(/^\s+|\s+$/gm , "").split(/\s*[;,\s]\s*/).shift(); 
 domain = customDomains || envDomain;
