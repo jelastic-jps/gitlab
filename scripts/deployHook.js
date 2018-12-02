@@ -1,5 +1,6 @@
 envName = getParam('envName');
 envDomain = getParam('envDomain');
+httpsPort = "${globals.HTTPS_PORT}";
 //getting first custom domain
 customDomains = (getParam('customDomains') || "").replace(/^\s+|\s+$/gm , "").split(/\s*[;,\s]\s*/).shift(); 
 domain = customDomains || envDomain;
@@ -11,7 +12,8 @@ resp = jelastic.env.control.AddContainerEnvVars({
     nodeGroup: "cp",
     vars: {
         GITLAB_HOST: domain,
-        REGISTRY_HOST: domain
+        REGISTRY_HOST: domain,
+        HTTPS_PORT: httpsPort
     }
 });
 if (resp.result != 0) return resp;
@@ -27,7 +29,7 @@ resp = jelastic.env.control.AddContainerEnvVars({
     session: session,
     nodeGroup: "runner",
     vars: {
-        CI_SERVER_URL: "https://"+domain+"/ci"
+        CI_SERVER_URL: "https://"+domain+":" + httpsPort + "/ci"
     }
 });
 if (resp.result != 0) return resp;
