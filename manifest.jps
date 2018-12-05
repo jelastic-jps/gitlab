@@ -226,5 +226,5 @@ actions:
                 docker rm -f gitlab-runner
                 ${globals.RUN_RUNNER}    
         
-
+startPage: https://${env.domain}:${globals.HTTPS_PORT}
 success: /text/success.md
