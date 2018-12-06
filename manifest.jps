@@ -5,8 +5,8 @@ baseUrl: https://raw.githubusercontent.com/jelastic-jps/gitlab/master
 categories:
   - apps/dev-and-admin-tools
 description:
-  text: GitLab Server + Container Registry + Build Nodes (Runners)
-  short: GitLab DevOps Package
+  text: Dedicated GitLab server for managing source code, building and deploying projects to Jelastic PaaS. Secured with built-in platform SSL by default. For custom domains can be upgraded to Let's Encrypt or higher level certificates. Runners are scaled vertically automatically, horizontal scaling is available in a click.
+  short: Private GitLab Server with scalable runners and Docker Hub Registry
 logo: /images/gitlab-logo.png
 name: GitLab DevOps
 targetRegions:
