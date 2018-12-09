@@ -5,13 +5,12 @@ baseUrl: https://raw.githubusercontent.com/jelastic-jps/gitlab/master
 categories:
   - apps/dev-and-admin-tools
 description:
-  text: GitLab Server + Container Registry + Build Nodes (Runners)
-  short: GitLab DevOps Package
+  text: /text/description.md
+  short: 'DevOps Lab Package: GitLab Server + Container Registry + Build Nodes (Runners)'
 logo: /images/gitlab-logo.png
-name: GitLab DevOps
+name: DevOps Lab
 targetRegions:
   type: vz7
-
 settings:
   fields:
     - type: checkbox
@@ -35,9 +34,12 @@ globals:
   HTTP_SECRET: ${fn.password(32)}
   REPO_URL: https://github.com/jelastic/docker-gitlab.git
   DEPLOY_HOOK: /root/deployLE.sh
-  UNDEPLOY_HOOK: /root/undeployLE.sh
+  UNDEPLOY_HOOK: /root/undeployLE.sh 
+  DEPLOY_HOOK_JS: https://raw.githubusercontent.com/jelastic-jps/gitlab/master/scripts/deployHook.js?_r=${fn.random}    
+  _DEPLOY_HOOK_JS: ${baseUrl}/scripts/deployHook.js?_r=${fn.random}  
   CERTS: /srv/docker/gitlab/certs
   HTTPS_PORT: 443
+  SSH_PORT: 10022
   RUN_RUNNER: |-
     docker run -d --privileged --name gitlab-runner --restart always \
       -v /var/run/docker.sock:/var/run/docker.sock \
@@ -81,44 +83,64 @@ nodes:
       sourcePath: ${globals.CERTS}/gitlab
       sourceNodeGroup: cp
       readOnly: true
-
 skipNodeEmails: true  
-
-
 onBeforeServiceScaleOut[runner]:
   forEach(event.response.nodes):
     - set-runner-ssl:
         id: ${@i.id}
-        
+
 onAfterServiceScaleOut[runner]:
   forEach(event.response.nodes):
     - register-runner:
         id: ${@i.id}
-
+        
 onInstall:
+  - installAddon:
+      id: update-addon
+      nodeGroup: cp    
+
   - if (!${settings.le-addon:false}): 
+      - installAddon:
+          id: install-le-addon
+          nodeGroup: cp
+
+      - api: env.control.AddEndpoint
+        nodeId: ${nodes.cp.master.id}
+        privatePort: ${globals.SSH_PORT}
+        protocol: TCP
+        name: GitLab SSH ${fn.random}
+      - api: env.control.EditEndpoint
+        id: ${response.object.id}
+        privatePort: ${response.object.publicPort}
+        protocol: TCP
+        name: GitLab SSH
       - setGlobals: 
+          SSH_PORT: ${response.object.publicPort}
           HTTPS_PORT: 4848
-  - add-env-vars
+
+  - add-env-vars:
+      https_port: ${globals.HTTPS_PORT}
+  - run-docker
   - install-ssl
   - deploy
   - register-runner:
       id: runner
   - if (${settings.le-addon}): 
-      - install-LE      
-    
-  - install-update-addon
-  
+      install-LE:
+        skipEnvs: true
+
 actions:
   add-env-vars:
     - api: env.control.AddContainerEnvVars
       nodeGroup: cp
-      vars: {"GITLAB_HOST": "${env.domain}", "REGISTRY_HOST": "${env.domain}", "HTTPS_PORT": "${globals.HTTPS_PORT}"}
+      vars: {"GITLAB_HOST": "${env.domain}", "REGISTRY_HOST": "${env.domain}", "HTTPS_PORT": "${this.https_port}", "SSH_PORT": "${globals.SSH_PORT}"}
     - api: env.control.AddContainerEnvVars
       nodeGroup: runner
       vars: {"CI_SERVER_URL": "https://${env.domain}:${globals.HTTPS_PORT}/ci"}
+
+  run-docker:
     - api: env.control.ExecDockerRunCmd
-      nodeId: ${nodes.cp.first.id}
+      nodeId: ${nodes.cp.master.id}
 
   install-ssl:
     - cmd[cp]: |-
@@ -130,7 +152,6 @@ actions:
         cp auth.crt ca.crt
         mkdir -p ${globals.CERTS}/registry
         yes | cp -f ${globals.CERTS}/gitlab/* ${globals.CERTS}/registry
-
     - set-runner-ssl:
         id: runner
         
@@ -141,7 +162,6 @@ actions:
       while [ ! -f /srv/docker/gitlab-runner/certs/ca.crt ]; do ls -l /srv/docker/gitlab-runner/certs; mount | grep certs; sleep 2; done
       cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/ca-trust/source/anchors/
       update-ca-trust extract
-
   register-runner:
     cmd[${this.id}]: |-
       until docker run --rm --privileged --name gitlab-runner \
@@ -162,16 +182,18 @@ actions:
       do
         sleep 2;
       done
-
       ${globals.RUN_RUNNER}
-      
+
   deploy:
     cmd[cp]: |-
       git clone ${globals.REPO_URL} gitlab &>> /var/log/run.log
       cd gitlab && docker-compose up -d &>> /var/log/run.log
 
   install-LE:
-      
+    - if (!${this.skipEnvs:false}): 
+        add-env-vars:
+          https_port: 443
+
     - cmd[cp]: |-
         dir=${globals.CERTS}/gitlab_self
         [ ! -d "$dir" ] && { mkdir -p $dir; yes | cp ${globals.CERTS}/gitlab/* $dir; }
@@ -182,49 +204,66 @@ actions:
         yes | cp -f /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/gitlab/auth.crt
         yes | cp -f /var/lib/jelastic/keys/privkey.pem ${globals.CERTS}/gitlab/auth.key
         service docker restart' > ${globals.DEPLOY_HOOK}
-        
+
         printf '#!/bin/bash
         mkdir -p $(dirname ${globals.UNDEPLOY_HOOK})
         yes | cp -f ${globals.CERTS}/gitlab_self/* ${globals.CERTS}/gitlab
-        service docker restart' > ${globals.UNDEPLOY_HOOK}        
-        
+        service docker restart' > ${globals.UNDEPLOY_HOOK}
+
     - install:
-        jps: https://raw.githubusercontent.com/SlavaKatiukha/lets-encrypt/hooks/manifest.jps?_r=${fn.random}
+        jps: https://raw.githubusercontent.com/jelastic-jps/lets-encrypt/master/manifest.jps?_r=${fn.random}
         nodeGroup: cp
         settings:
-          deployHook: ${baseUrl}/scripts/deployHook.js?_r=${fn.random}
+          deployHook: ${globals.DEPLOY_HOOK_JS}
           deployHookType: js
-          undeployHook: ${baseUrl}/scripts/deployHook.js?_r=${fn.random}
+          undeployHook: ${globals.DEPLOY_HOOK_JS}
           undeployHookType: js
           _customDomains: ${env.domain}
-          
+
+    - if (!${this.skipEnvs:false}): 
+       cmd[cp]: |-
+          cd gitlab
+          docker-compose stop &>> /var/log/run.log 
+          docker-compose rm -f &>> /var/log/run.log
+          docker network prune -f &>> /var/log/run.log 
+          docker-compose up -d &>> /var/log/run.log
+
     - cmd[runner]: |-
         cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/ca-trust/source/anchors/
         update-ca-trust extract
         service docker restart
-        
-  install-update-addon:
-    install:
-      nodeGroup: cp  
-      jps:
-        type: update
-        id: update-git-lab
-        name: GitLab Server Automated Update
-        description: Use the button below to initiate the update proccedure
-        buttons:
-          - caption: Update Now
-            action: update
-            loadingText: Updating...
-            confirmText: Do you want to update GitLab Server?
-            successText: GitLab Server has been successfully updated!
-        actions:
-          update:
-            - cmd[cp]: |-
-                cd gitlab && git pull origin master &>> /var/log/run.log
-                docker-compose up -d &>> /var/log/run.log
-            - cmd[runner]: |-
-                docker rm -f gitlab-runner
-                ${globals.RUN_RUNNER}    
-        
 
+addons:
+  - id: update-addon
+    name: Update GitLab Server
+    description: Press "Update" button to initiate update procedure 
+    buttons:
+      - caption: Update
+        action: update
+        loadingText: Updating...
+        confirmText: Do you want to update GitLab Server?
+        successText: GitLab Server has been successfully updated!
+    actions:
+      update:
+        - cmd[cp]: |-
+            cd gitlab && git pull origin master &>> /var/log/run.log
+            docker-compose up -d &>> /var/log/run.log
+        - cmd[runner]: |-
+            docker rm -f gitlab-runner
+            ${globals.RUN_RUNNER}
+            
+  - id: install-le-addon
+    name: Let's Encrypt + Custom Domains
+    description: Press "Install" button to initiate installation procedure 
+    globals: 
+      HTTPS_PORT: 443
+
+    buttons:
+      - caption: Install 
+        action: install-LE
+        loadingText: Installing...
+        confirmText: Do you want to install Let's Encrypt addon?
+        successText: Let's Encrypt addon has been successfully installed!
+
+startPage: https://${env.domain}:${globals.HTTPS_PORT}
 success: /text/success.md
