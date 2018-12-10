@@ -6,7 +6,7 @@ categories:
   - apps/dev-and-admin-tools
 description:
   text: /text/description.md
-  short: 'DevOps Lab Package: GitLab Server + Container Registry + Build Nodes (Runners)'
+  short: 'Private GitLab Server with scalable runners and Docker Hub Registry'
 logo: /images/gitlab-logo.png
 name: DevOps Lab
 targetRegions:
