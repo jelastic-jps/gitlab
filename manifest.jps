@@ -8,7 +8,7 @@ description:
   text: /text/description.md
   short: 'Private GitLab Server with scalable runners and Docker Hub Registry'
 logo: /images/gitlab-logo.png
-name: DevOps Lab
+name: DevOps Lab - GitLab Server
 targetRegions:
   type: vz7
 settings:
@@ -101,7 +101,7 @@ onInstall:
 
   - if (!${settings.le-addon:false}): 
       - installAddon:
-          id: install-le-addon
+          id: letsencrypt-ssl-addon
           nodeGroup: cp
 
       - api: env.control.AddEndpoint
@@ -252,7 +252,7 @@ addons:
             docker rm -f gitlab-runner
             ${globals.RUN_RUNNER}
             
-  - id: install-le-addon
+  - id: letsencrypt-ssl-addon
     name: Let's Encrypt + Custom Domains
     description: Press "Install" button to initiate installation procedure 
     globals: 
