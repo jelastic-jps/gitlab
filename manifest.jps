@@ -87,13 +87,15 @@ nodes:
 skipNodeEmails: true  
 onBeforeServiceScaleOut[runner]:
   forEach(event.response.nodes):
-    - set-runner-ssl:
-        id: ${@i.id}
+    set-runner-ssl: ${@i.id}
 
 onAfterServiceScaleOut[runner]:
   forEach(event.response.nodes):
-    - register-runner:
-        id: ${@i.id}
+    register-runner: ${@i.id}
+        
+onBeforeScaleIn[runner]:
+  forEach(event.response.nodes):
+    unregister-runner: ${@i.id}
         
 onInstall:
   - installAddon:
@@ -137,7 +139,8 @@ onInstall:
   - install-ssl
   - deploy
   - register-runner:
-      id: runner
+    forEach(nodes.runner):
+      register-runner: ${@i.id}
   - if (${settings.le-addon}): 
       install-LE:
         skipEnvs: true
@@ -165,11 +168,10 @@ actions:
         cp auth.crt ca.crt
         mkdir -p ${globals.CERTS}/registry
         yes | cp -f ${globals.CERTS}/gitlab/* ${globals.CERTS}/registry
-    - set-runner-ssl:
-        id: runner
+    - set-runner-ssl: runner
         
   set-runner-ssl:
-    cmd[${this.id}]: |-
+    cmd[${this}]: |-
       yum install ca-certificates -y
       update-ca-trust force-enable
       while [ ! -f /srv/docker/gitlab-runner/certs/ca.crt ]; do ls -l /srv/docker/gitlab-runner/certs; mount | grep certs; sleep 2; done
@@ -177,20 +179,21 @@ actions:
       cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/tls/certs/
       update-ca-trust extract
       service docker restart
+      
   register-runner:
-    cmd[${this.id}]: |-
+    cmd[${this}]: |-
       until docker run --rm --privileged --name gitlab-runner \
       -v /var/run/docker.sock:/var/run/docker.sock \
       -v /srv/docker/gitlab-runner:/etc/gitlab-runner:shared \
       gitlab/gitlab-runner register \
       --non-interactive \
+      --name "node${this}" \
       --executor "docker" \
       --docker-image "$DOCKER_IMAGE" \
       --docker-volumes /var/run/docker.sock:/var/run/docker.sock \
       --docker-privileged \
       --url "$CI_SERVER_URL" \
       --registration-token "$RUNNER_TOKEN" \
-      --description "docker-runner" \
       --tag-list "" \
       --run-untagged \
       --locked="false" &>> /var/log/run.log
@@ -198,11 +201,18 @@ actions:
         sleep 2;
       done
       ${globals.RUN_RUNNER}
-    removeLocalNS:
-      id: ${this.id}
+    removeLocalNS: ${this}
+    
+  unregister-runner:
+    cmd[${this}]: |-
+      docker run --rm --privileged --name unreg-runner \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -v /srv/docker/gitlab-runner:/etc/gitlab-runner:shared \
+      gitlab/gitlab-runner unregister \
+      --name "node${this}"
 
   removeLocalNS:
-      cmd[${this.id}]: echo -e "search ${env.envName}\nnameserver 8.8.8.8" > /etc/resolv.conf
+      cmd[${this}]: echo -e "search ${env.envName}\nnameserver 8.8.8.8" > /etc/resolv.conf
       user: root
 
   deploy:
