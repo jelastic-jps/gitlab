@@ -15,7 +15,7 @@ settings:
   fields:
     - type: checkbox
       name: le-addon
-      caption: Install Let's Encrypt Certificates Addon
+      caption: Install Let's Encrypt Certificates Addon and Custom Domains. Public IP is required.
       value: false
 
 onBeforeInit: |  
@@ -40,6 +40,7 @@ globals:
   CERTS: /srv/docker/gitlab/certs
   HTTPS_PORT: 443
   SSH_PORT: 10022
+  REGISTRY_PORT: 5000
   RUN_RUNNER: |-
     docker run -d --privileged --name gitlab-runner --restart always \
       -v /var/run/docker.sock:/var/run/docker.sock \
@@ -108,7 +109,7 @@ onInstall:
         nodeId: ${nodes.cp.master.id}
         privatePort: ${globals.SSH_PORT}
         protocol: TCP
-        name: GitLab SSH ${fn.random}
+        name: GitLab SSH
       - api: env.control.EditEndpoint
         id: ${response.object.id}
         privatePort: ${response.object.publicPort}
@@ -117,6 +118,18 @@ onInstall:
       - setGlobals: 
           SSH_PORT: ${response.object.publicPort}
           HTTPS_PORT: 4848
+      - api: env.control.AddEndpoint
+        nodeId: ${nodes.cp.master.id}
+        privatePort: 5000
+        protocol: TCP
+        name: GitLab Registry
+      - api: env.control.EditEndpoint
+        id: ${response.object.id}
+        privatePort: ${response.object.publicPort}
+        protocol: TCP
+        name: GitLab Registry
+      - setGlobals: 
+          REGISTRY_PORT: ${response.object.publicPort}
 
   - add-env-vars:
       https_port: ${globals.HTTPS_PORT}
@@ -133,7 +146,7 @@ actions:
   add-env-vars:
     - api: env.control.AddContainerEnvVars
       nodeGroup: cp
-      vars: {"GITLAB_HOST": "${env.domain}", "REGISTRY_HOST": "${env.domain}", "HTTPS_PORT": "${this.https_port}", "SSH_PORT": "${globals.SSH_PORT}"}
+      vars: {"GITLAB_HOST": "${env.domain}", "REGISTRY_HOST": "${env.domain}", "HTTPS_PORT": "${this.https_port}", "SSH_PORT": "${globals.SSH_PORT}", "REGISTRY_PORT": "${globals.REGISTRY_PORT}"}
     - api: env.control.AddContainerEnvVars
       nodeGroup: runner
       vars: {"CI_SERVER_URL": "https://${env.domain}:${globals.HTTPS_PORT}/ci"}
@@ -161,7 +174,9 @@ actions:
       update-ca-trust force-enable
       while [ ! -f /srv/docker/gitlab-runner/certs/ca.crt ]; do ls -l /srv/docker/gitlab-runner/certs; mount | grep certs; sleep 2; done
       cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/ca-trust/source/anchors/
+      cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/tls/certs/
       update-ca-trust extract
+      service docker restart
   register-runner:
     cmd[${this.id}]: |-
       until docker run --rm --privileged --name gitlab-runner \
@@ -183,6 +198,12 @@ actions:
         sleep 2;
       done
       ${globals.RUN_RUNNER}
+    removeLocalNS:
+      id: ${this.id}
+
+  removeLocalNS:
+      cmd[${this.id}]: echo -e "search ${env.envName}\nnameserver 8.8.8.8" > /etc/resolv.conf
+      user: root
 
   deploy:
     cmd[cp]: |-
@@ -191,8 +212,11 @@ actions:
 
   install-LE:
     - if (!${this.skipEnvs:false}): 
-        add-env-vars:
-          https_port: 443
+        - add-env-vars:
+            https_port: 443
+        - cmd[cp]: |-
+            iptables -t nat -I PREROUTING -p tcp -m tcp --dport 4848 -j REDIRECT --to-ports 443
+            service iptables save
 
     - cmd[cp]: |-
         dir=${globals.CERTS}/gitlab_self
