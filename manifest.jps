@@ -141,7 +141,7 @@ onInstall:
   - forEach(nodes.runner):
       register-runner: ${@i.id}
       
-  - if (${settings.le-addon}): 
+  - if (${settings.le-addon:false}): 
       install-LE:
         skipEnvs: true
 
