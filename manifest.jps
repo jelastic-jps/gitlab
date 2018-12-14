@@ -138,9 +138,9 @@ onInstall:
   - run-docker
   - install-ssl
   - deploy
-  - register-runner:
-    forEach(nodes.runner):
+  - forEach(nodes.runner):
       register-runner: ${@i.id}
+      
   - if (${settings.le-addon}): 
       install-LE:
         skipEnvs: true
