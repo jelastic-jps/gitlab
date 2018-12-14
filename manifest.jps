@@ -201,7 +201,6 @@ actions:
         sleep 2;
       done
       ${globals.RUN_RUNNER}
-    removeLocalNS: ${this}
     
   unregister-runner:
     cmd[${this}]: |-
@@ -210,10 +209,6 @@ actions:
       -v /srv/docker/gitlab-runner:/etc/gitlab-runner:shared \
       gitlab/gitlab-runner unregister \
       --name "node${this}"
-
-  removeLocalNS:
-      cmd[${this}]: echo -e "search ${env.envName}\nnameserver 8.8.8.8" > /etc/resolv.conf
-      user: root
 
   deploy:
     cmd[cp]: |-
