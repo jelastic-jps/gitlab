@@ -15,7 +15,7 @@ settings:
   fields:
     - type: checkbox
       name: le-addon
-      caption: Install Let's Encrypt Certificates Addon and Custom Domains. Public IP is required.
+      caption: Install Let's Encrypt Certificates and Custom Domains Addon. Public IP is required.
       value: false
 
 onBeforeInit: |  
