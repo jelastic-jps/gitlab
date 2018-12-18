@@ -73,10 +73,9 @@ nodes:
   image: jelastic/docker-ce
   nodeGroup: runner
   displayName: Runners
-  links: cp:gitlab
   env: 
     RUNNER_TOKEN: ${globals.RUNNER_TOKEN}
-    DOCKER_IMAGE: docker:stable
+    DOCKER_IMAGE: docker:stable-git
   volumes:
   - /srv/docker/gitlab-runner/certs
   volumeMounts:
@@ -106,7 +105,6 @@ onInstall:
       - installAddon:
           id: letsencrypt-ssl-addon
           nodeGroup: cp
-
       - api: env.control.AddEndpoint
         nodeId: ${nodes.cp.master.id}
         privatePort: ${globals.SSH_PORT}
@@ -120,18 +118,7 @@ onInstall:
       - setGlobals: 
           SSH_PORT: ${response.object.publicPort}
           HTTPS_PORT: 4848
-      - api: env.control.AddEndpoint
-        nodeId: ${nodes.cp.master.id}
-        privatePort: 5000
-        protocol: TCP
-        name: GitLab Registry
-      - api: env.control.EditEndpoint
-        id: ${response.object.id}
-        privatePort: ${response.object.publicPort}
-        protocol: TCP
-        name: GitLab Registry
-      - setGlobals: 
-          REGISTRY_PORT: ${response.object.publicPort}
+          REGISTRY_PORT: 8443
 
   - add-env-vars:
       https_port: ${globals.HTTPS_PORT}
