@@ -1,0 +1,1 @@
+Dedicated GitLab server for managing source code, building and deploying projects. Secured with built-in platform SSL that can be upgraded to Let's Encrypt or higher level certificates for custom domains. Runners are automatically scaled vertically, horizontal scaling is available in a click.
