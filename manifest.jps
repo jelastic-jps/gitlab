@@ -37,6 +37,7 @@ globals:
   UNDEPLOY_HOOK: /root/undeployLE.sh 
   DEPLOY_HOOK_JS: https://raw.githubusercontent.com/jelastic-jps/gitlab/master/scripts/deployHook.js?_r=${fn.random}    
   _DEPLOY_HOOK_JS: ${baseUrl}/scripts/deployHook.js?_r=${fn.random}  
+  _BASE_URL: ${baseUrl}
   CERTS: /srv/docker/gitlab/certs
   HTTPS_PORT: 443
   SSH_PORT: 10022
@@ -80,7 +81,7 @@ nodes:
   - /srv/docker/gitlab-runner/certs
   volumeMounts:
     /srv/docker/gitlab-runner/certs:
-      sourcePath: ${globals.CERTS}/gitlab
+      sourcePath: ${globals.CERTS}
       sourceNodeGroup: cp
       readOnly: true
 skipNodeEmails: true  
@@ -147,14 +148,11 @@ actions:
 
   install-ssl:
     - cmd[cp]: |-
-        mkdir -p ${globals.CERTS}/gitlab
-        cd ${globals.CERTS}/gitlab
+        cd ${globals.CERTS}
         openssl req -nodes -newkey rsa:4096 -keyout auth.key -out auth.csr -subj "/CN=${env.domain}" &>> /var/log/run.log                       
         openssl x509 -req -extfile <(printf "subjectAltName=DNS:${env.domain},DNS:registry") -in auth.csr -out auth.crt -signkey auth.key -days 3650 &>> /var/log/run.log
         openssl dhparam -out dhparam.pem 2048 &>> /var/log/run.log
         cp auth.crt ca.crt
-        mkdir -p ${globals.CERTS}/registry
-        yes | cp -f ${globals.CERTS}/gitlab/* ${globals.CERTS}/registry
     - set-runner-ssl: runner
         
   set-runner-ssl:
@@ -211,21 +209,22 @@ actions:
             service iptables save
 
     - cmd[cp]: |-
-        dir=${globals.CERTS}/gitlab_self
-        [ ! -d "$dir" ] && { mkdir -p $dir; yes | cp ${globals.CERTS}/gitlab/* $dir; }
+        dir=${globals.CERTS}/../certs_ss
+        [ ! -d "${dir}" ] && { mkdir -p ${dir}; yes | cp ${globals.CERTS}/* ${dir}; }
         printf '#!/bin/bash
         mkdir -p $(dirname ${globals.DEPLOY_HOOK})
-        #wget https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem -O ${globals.CERTS}/gitlab/ca.crt
-        wget https://letsencrypt.org/certs/fakelerootx1.pem -O ${globals.CERTS}/gitlab/ca.crt
-        yes | cp -f /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/gitlab/auth.crt
-        yes | cp -f /var/lib/jelastic/keys/privkey.pem ${globals.CERTS}/gitlab/auth.key
+        #wget https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem -O ${globals.CERTS}/ca.crt
+        wget https://letsencrypt.org/certs/fakelerootx1.pem -O ${globals.CERTS}/ca.crt
+        yes | cp -f /var/lib/jelastic/keys/fullchain.pem ${globals.CERTS}/auth.crt
+        yes | cp -f /var/lib/jelastic/keys/privkey.pem ${globals.CERTS}/auth.key
         service docker restart' > ${globals.DEPLOY_HOOK}
 
         printf '#!/bin/bash
         mkdir -p $(dirname ${globals.UNDEPLOY_HOOK})
-        yes | cp -f ${globals.CERTS}/gitlab_self/* ${globals.CERTS}/gitlab
+        yes | cp -f ${dir}/* ${globals.CERTS}
         service docker restart' > ${globals.UNDEPLOY_HOOK}
-
+    
+    - log: Test Globals Visibility -> ${globals._BASE_URL} + ${globals._DEPLOY_HOOK_JS}     
     - install:
         jps: https://raw.githubusercontent.com/jelastic-jps/lets-encrypt/master/manifest.jps?_r=${fn.random}
         nodeGroup: cp
@@ -273,7 +272,6 @@ addons:
     description: Press "Install" button to initiate installation procedure 
     globals: 
       HTTPS_PORT: 443
-
     buttons:
       - caption: Install 
         action: install-LE
