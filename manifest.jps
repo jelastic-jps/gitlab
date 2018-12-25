@@ -32,7 +32,7 @@ globals:
   GITLAB_SECRETS_BASE: ${fn.password(64)}
   ROOT_PASSWORD: ${fn.password(16)}
   HTTP_SECRET: ${fn.password(32)}
-  REPO_URL: https://github.com/siruslan/docker-gitlab.git
+  REPO_URL: https://github.com/jelastic/docker-gitlab.git
   DEPLOY_HOOK: /root/deployLE.sh
   UNDEPLOY_HOOK: /root/undeployLE.sh 
   DEPLOY_HOOK_JS: https://raw.githubusercontent.com/jelastic-jps/gitlab/master/scripts/deployHook.js?_r=${fn.random}    
