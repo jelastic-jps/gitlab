@@ -58,7 +58,7 @@ nodes:
   - /srv/docker/gitlab
   - /root
   env:
-    JELASTIC_EXPOSE: 10080
+    JELASTIC_EXPOSE: 80
     RUNNER_TOKEN: ${globals.RUNNER_TOKEN}
     GITLAB_SECRETS_BASE: ${globals.GITLAB_SECRETS_BASE}
     ROOT_PASSWORD: ${globals.ROOT_PASSWORD}
@@ -84,7 +84,10 @@ nodes:
       sourcePath: ${globals.CERTS}
       sourceNodeGroup: cp
       readOnly: true
-skipNodeEmails: true  
+
+ssl: true      
+skipNodeEmails: true
+
 onBeforeServiceScaleOut[runner]:
   forEach(event.response.nodes):
     set-runner-ssl: ${@i.id}
