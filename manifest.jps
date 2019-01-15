@@ -36,8 +36,6 @@ globals:
   DEPLOY_HOOK: /root/deployLE.sh
   UNDEPLOY_HOOK: /root/undeployLE.sh 
   DEPLOY_HOOK_JS: https://raw.githubusercontent.com/jelastic-jps/gitlab/master/scripts/deployHook.js?_r=${fn.random}    
-  _DEPLOY_HOOK_JS: ${baseUrl}/scripts/deployHook.js?_r=${fn.random}  
-  _BASE_URL: ${baseUrl}
   CERTS: /srv/docker/gitlab/certs
   HTTPS_PORT: 443
   SSH_PORT: 10022
@@ -227,7 +225,6 @@ actions:
         yes | cp -f ${dir}/* ${globals.CERTS}
         service docker restart' > ${globals.UNDEPLOY_HOOK}
     
-    - log: Test Globals Visibility -> ${globals._BASE_URL} + ${globals._DEPLOY_HOOK_JS}     
     - install:
         jps: https://raw.githubusercontent.com/jelastic-jps/lets-encrypt/master/manifest.jps?_r=${fn.random}
         nodeGroup: cp
