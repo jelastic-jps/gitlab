@@ -1,7 +1,7 @@
 envName = getParam('envName');
 envDomain = getParam('envDomain');
-httpsPort =  getParam('action') == 'install' ? 443 : 4848;
-scriptName = getParam('action') == 'install' ? 'deployLE.sh' : 'undeployLE.sh';
+httpsPort =  getParam('action') == 'uninstall' ? 4848 : 443;
+scriptName = getParam('action') == 'uninstall' ? 'undeployLE.sh' : 'deployLE.sh';
 
 //getting first custom domain
 customDomains = (getParam('customDomains') || "").replace(/^\s+|\s+$/gm , "").split(/\s*[;,\s]\s*/).shift(); 
