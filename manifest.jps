@@ -223,6 +223,8 @@ actions:
         printf '#!/bin/bash
         mkdir -p $(dirname ${globals.UNDEPLOY_HOOK})
         yes | cp -f ${dir}/* ${globals.CERTS}
+        iptables -t nat -D PREROUTING -p tcp -m tcp --dport 4848 -j REDIRECT --to-ports 443
+        service iptables save
         service docker restart' > ${globals.UNDEPLOY_HOOK}
     
     - install:
