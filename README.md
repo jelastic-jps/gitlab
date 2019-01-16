@@ -7,16 +7,16 @@
 Dedicated GitLab server for managing source code, building and deploying projects. Secured with built-in platform SSL that can be upgraded to Let's Encrypt or higher level certificates for custom domains. Runners are automatically scaled vertically, horizontal scaling is available in a click.
 
 <p align="left"> 
-<img src="images/topo.png" width="250">
+<img src="images/topo.png" width="330">
 </p>
 
 Automation scripts inside the package perform the following actions:
 - Creates 2 system containers with pre-installed Docker Engine CE and docker-compose utility
-- Generates and installs SSL certificates, as well as shares them with Runners via NFS volume 
+- Generates and installs self-signed or [Let’s Encrypt SSL certificates](https://jelastic.com/blog/free-ssl-certificates-with-lets-encrypt/), as well as shares them with Runners via NFS volume 
 - Injects dynamic environment variables such as tokens, passwords and environment domain
-- Deploys GitLab Server and Container Registry via docker-compose.yml in one Docker Engine node 
+- Deploys GitLab Server and Container Registry via [docker-compose.yml](https://github.com/jelastic/docker-gitlab/blob/master/docker-compose.yml) in one Docker Engine node 
 - Creates one Runner in a separate Docker Engine and registers it automatically in GitLab Server
-- Automates discovery of newly added Runners upon horizontal scaling 
+- Automates discovery of newly added Runners upon horizontal scaling  
 
 ### Deployment to the Cloud
 
@@ -42,8 +42,8 @@ Afterward, make sure that application is up and running by pressing **Open in Br
 <img src="images/success.png" width="300">
 </p>
 
-Use credentials from the picture above to access GitLab admin panel.
+Use credentials from the successful installation message or received email notification to log in to admin panel. 
    
-### Managed Hosting Business on GitLab DevOps Pack
+### Managed Hosting Business
 
 To start offering this solution to your customers please follow to [Managed PaaS Hosting Business](https://jelastic.com/apaas/)
