@@ -1,0 +1,59 @@
+type: update
+id: gitlab-mail-server
+name: GitLab SMTP Settings
+description: Configure SMTP settings for sending emails.
+logo: https://github.com/jelastic-jps/gitlab/raw/master/images/gitlab-logo.png
+targetNodes: 
+  nodeGroup: cp 
+settings:
+  fields:
+    - name: smtp_address
+      caption: SMTP Server
+      type: string
+      default: smtp.server
+    - name: smtp_port
+      caption: SMTP Port
+      type: string
+      default: 465
+    - name: smtp_user_name
+      caption: User Name
+      type: string
+      default: smtp user
+    - name: smtp_password
+      caption: Password
+      type: string
+      default: smtp password
+    - name: smtp_domain
+      caption: Domain
+      type: string
+      default: example.com
+    - name: smtp_authentication
+      caption: Authentication
+      type: string
+      default: login
+    - name: smtp_enable_starttls_auto
+      caption: Start TLS
+      type: string
+      default: true
+
+buttons:   
+  - settings: main
+    action: config
+    caption: Configure
+    submitButtonText: Apply  
+    
+onInstall: config
+    
+actions:
+  config:
+    cmd[cp]: |
+      cd gitlab    
+      sed -i 's|SMTP_ENABLED=.*|SMTP_ENABLED=true|g' docker-compose.yml 
+      sed -i 's|SMTP_HOST=.*|SMTP_HOST=${settings.smtp_address}|g' docker-compose.yml 
+      sed -i 's|SMTP_PORT=.*|SMTP_PORT=${settings.smtp_port}|g' docker-compose.yml 
+      sed -i 's|SMTP_USER=.*|SMTP_USER=${settings.smtp_user_name}|g' docker-compose.yml 
+      sed -i 's|SMTP_PASS=.*|SMTP_PASS=${settings.smtp_password}|g' docker-compose.yml 
+      sed -i 's|SMTP_DOMAIN=.*|SMTP_DOMAIN=${settings.smtp_domain}|g' docker-compose.yml 
+      sed -i 's|SMTP_AUTHENTICATION=.*|SMTP_AUTHENTICATION=${settings.smtp_authentication}|g' docker-compose.yml 
+      sed -i 's|SMTP_STARTTLS=.*|SMTP_STARTTLS=${settings.smtp_enable_starttls_auto}|g' docker-compose.yml 
+      docker-compose up -d &>> /var/log/run.log
