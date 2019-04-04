@@ -12,11 +12,43 @@ name: DevOps Lab - GitLab Server
 targetRegions:
   type: vz7
 settings:
-  fields:
-    - type: checkbox
-      name: le-addon
-      caption: Install Let's Encrypt Certificates and Custom Domains Addon. Public IP is required.
-      value: false
+  main:
+    fields:
+      - type: checkbox
+        name: le-addon
+        caption: Install Let's Encrypt Certificates and Custom Domains Addon. Public IP is required.
+        value: false
+
+  smtp:
+    fields:
+      - name: smtp_address
+        caption: SMTP Server
+        type: string
+        default: smtp.server
+      - name: smtp_port
+        caption: SMTP Port
+        type: string
+        default: 465
+      - name: smtp_user_name
+        caption: User Name
+        type: string
+        default: smtp user
+      - name: smtp_password
+        caption: Password
+        type: string
+        default: smtp password
+      - name: smtp_domain
+        caption: Domain
+        type: string
+        default: example.com
+      - name: smtp_authentication
+        caption: Authentication
+        type: string
+        default: login
+      - name: smtp_enable_starttls_auto
+        caption: Start TLS
+        type: string
+        default: true
 
 onBeforeInit: |  
   var resp = jelastic.billing.account.GetQuotas(appid, session, 'environment.externalip.enabled');
@@ -101,6 +133,9 @@ onBeforeScaleIn[runner]:
 onInstall:
   - installAddon:
       id: update-addon
+      nodeGroup: cp    
+  - installAddon:
+      id: smtp-addon
       nodeGroup: cp    
 
   - if (!${settings.le-addon:false}): 
@@ -280,6 +315,31 @@ addons:
         loadingText: Installing...
         confirmText: Do you want to install Let's Encrypt addon?
         successText: Let's Encrypt addon has been successfully installed!
+
+  - id: smtp-addon
+    name: GitLab SMTP Settings
+    description: Press "Configure" button to update SMTP settings 
+    buttons:
+      - caption: Configure
+        settings: smtp
+        action: configure
+        loadingText: Updating...
+        confirmText: Do you want to update SMTP settings?
+        successText: GitLab SMTP settings have been successfully updated!
+    actions:
+      configure:
+        cmd[cp]: |-
+          cd gitlab    
+          sed -i 's|SMTP_ENABLED=.*|SMTP_ENABLED=true|g' docker-compose.yml 
+          sed -i 's|SMTP_HOST=.*|SMTP_HOST=${settings.smtp_address}|g' docker-compose.yml 
+          sed -i 's|SMTP_PORT=.*|SMTP_PORT=${settings.smtp_port}|g' docker-compose.yml 
+          sed -i 's|SMTP_USER=.*|SMTP_USER=${settings.smtp_user_name}|g' docker-compose.yml 
+          sed -i 's|SMTP_PASS=.*|SMTP_PASS=${settings.smtp_password}|g' docker-compose.yml 
+          sed -i 's|SMTP_DOMAIN=.*|SMTP_DOMAIN=${settings.smtp_domain}|g' docker-compose.yml 
+          sed -i 's|SMTP_AUTHENTICATION=.*|SMTP_AUTHENTICATION=${settings.smtp_authentication}|g' docker-compose.yml 
+          sed -i 's|SMTP_STARTTLS=.*|SMTP_STARTTLS=${settings.smtp_enable_starttls_auto}|g' docker-compose.yml 
+          docker-compose up -d &>> /var/log/run.log
+
 
 startPage: https://${env.domain}:${globals.HTTPS_PORT}
 success: /text/success.md
