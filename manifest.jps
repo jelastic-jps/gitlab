@@ -262,8 +262,8 @@ addons:
         successText: GitLab Server has been successfully updated!
     actions:
       update:
-        - cmd[cp]: |-
-            cd gitlab && git pull origin master &>> /var/log/run.log
+        - cmd[cp]: |-            
+            cd gitlab && git stash && git pull origin master &>> /var/log/run.log && git stash pop
             docker-compose up -d &>> /var/log/run.log
         - cmd[runner]: |-
             docker rm -f gitlab-runner
