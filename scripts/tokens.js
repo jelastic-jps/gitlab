@@ -11,8 +11,10 @@ var login = "root",
     userId = 1;
 
 var t = new Transport();
+t.setAttemptsCount(12);
+t.setAttemptPeriod(10000);
 
-var resp = post("https://" + domain + "/api/v4/session/", {
+var resp = t.post("https://" + domain + "/api/v4/session/", {
     login: login,
     password: pswd
 }, {})
@@ -26,7 +28,7 @@ if (!privateToken) return {
     respone: resp
 };
 
-var resp = post("https://" + domain + "/api/v4/users/" + userId + "/impersonation_tokens", {
+var resp = t.post("https://" + domain + "/api/v4/users/" + userId + "/impersonation_tokens", {
     "name": "token-for-jelastic",
     "scopes[]": "api"
 }, {
@@ -66,22 +68,3 @@ resp.onAfterReturn[next] = {
     J_TOKEN: jToken
 };
 return resp;
-
-function post(url, params, headers) {
-    var i = 0,
-        sleep = 10000,
-        ntimes = 12;
-
-    //trying [ntimes] with [sleep] ms delay between two requests 
-    while (i++ < ntimes) {
-        try {
-            return t.post(url, params, headers);
-        } catch (e) {
-            if (i == ntimes) return {
-                result: 99,
-                error: e
-            };
-            else java.lang.Thread.sleep(sleep);
-        }
-    }
-}
