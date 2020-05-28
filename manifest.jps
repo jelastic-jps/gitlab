@@ -50,12 +50,22 @@ settings:
         type: string
         default: true
 
-onBeforeInit: |  
-  var resp = jelastic.billing.account.GetQuotas(appid, session, 'environment.externalip.enabled');
-  if (resp.result != 0) return resp;  
-  var r = {result:0}
-  if (!resp.array[0].value) r.settings = {}; 
-  return r;
+onBeforeInit: |
+  var minCloudlets = 32;
+  var settings = jps.settings;
+  var fields = settings.main.fields;
+  var resp = jelastic.billing.account.GetQuotas(appid, session, [
+    'environment.externalip.enabled',
+    'environment.maxcloudletsperrec'].join(";")
+    );
+  if (resp.result != 0) return resp;
+  if (!resp.array[0].value) { fields.splice(0,1); };
+  if (resp.array[1].value < minCloudlets) {
+    fields.push(
+      {"type": "compositefield","height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
+    );
+  };
+  return { result: 0, settings: settings };
 
 globals:
   DB_USER: gitlab-${fn.password(5)}
