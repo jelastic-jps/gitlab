@@ -54,17 +54,16 @@ onBeforeInit: |
   var minCloudlets = 32;
   var settings = jps.settings;
   var fields = settings.main.fields;
-  var resp = jelastic.billing.account.GetQuotas(appid, session, [
-    'environment.externalip.enabled',
-    'environment.maxcloudletsperrec'].join(";")
-    );
-  if (resp.result != 0) return resp;
-  if (!resp.array[0].value) { fields.splice(0,1); };
-  if (resp.array[1].value < minCloudlets) {
-    fields.push(
-      {"type": "compositefield","height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
-    );
-  };
+  var quotas = jelastic.billing.account.GetQuotas('environment.externalip.enabled' + ";" + 'environment.maxcloudletsperrec').array;
+  for (var i = 0; i < quotas.length; i++){
+    var q = quotas[i], n = toNative(q.quota.name);
+    if (n == 'environment.externalip.enabled' && !q.value) { fields.splice(0,1); };
+    if (n == 'environment.maxcloudletsperrec' && q.value < minCloudlets) {
+      fields.push(
+        {"type": "compositefield","height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
+      );
+    };
+  }
   return { result: 0, settings: settings };
 
 globals:
