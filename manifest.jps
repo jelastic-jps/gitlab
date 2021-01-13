@@ -90,7 +90,7 @@ globals:
 nodes:
 - count: 1
   cloudlets: 32
-  image: jelastic/docker-ce
+  nodeType: dockerengine
   nodeGroup: cp
   displayName: GitLab Server
   volumes:
@@ -110,7 +110,7 @@ nodes:
 
 - count: 1
   cloudlets: 32
-  image: jelastic/docker-ce
+  nodeType: dockerengine
   nodeGroup: runner
   displayName: Runners
   env: 
