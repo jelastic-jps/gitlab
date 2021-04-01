@@ -4,6 +4,7 @@ id: gitlab-ci-cd
 baseUrl: https://raw.githubusercontent.com/jelastic-jps/gitlab/master
 categories:
   - apps/dev-and-admin-tools
+  - apps/clusters
 description:
   text: /text/description.md
   short: 'Private GitLab Server with scalable runners and Docker Hub Registry'
