@@ -198,6 +198,7 @@ actions:
         openssl req -nodes -newkey rsa:4096 -keyout auth.key -out auth.csr -subj "/CN=${env.domain}" &>> /var/log/run.log                       
         openssl x509 -req -extfile <(printf "subjectAltName=DNS:${env.domain},DNS:registry") -in auth.csr -out auth.crt -signkey auth.key -days 3650 &>> /var/log/run.log
         openssl dhparam -out dhparam.pem 2048 &>> /var/log/run.log
+        chmod a+r auth.key
         cp auth.crt ca.crt
     - set-runner-ssl: runner
         
