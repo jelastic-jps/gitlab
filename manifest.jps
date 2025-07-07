@@ -205,7 +205,7 @@ actions:
   set-runner-ssl:
     cmd[${this}]: |-
       yum install ca-certificates -y
-      update-ca-trust force-enable
+      update-ca-trust
       while [ ! -f /srv/docker/gitlab-runner/certs/ca.crt ]; do ls -l /srv/docker/gitlab-runner/certs; mount | grep certs; sleep 2; done
       cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/ca-trust/source/anchors/
       cp /srv/docker/gitlab-runner/certs/ca.crt /etc/pki/tls/certs/
