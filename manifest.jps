@@ -72,9 +72,12 @@ globals:
   DB_PASSWORD: ${fn.password(32)}
   RUNNER_TOKEN: ${fn.password(32)}
   GITLAB_SECRETS_BASE: ${fn.password(64)}
+  GITLAB_SECRETS_ARE_PRIMARY: ${fn.password(32)}
+  GITLAB_SECRETS_ARE_DETERMINISTIC: ${fn.password(32)}
+  GITLAB_SECRETS_ARE_SALT: ${fn.password(32)}
   ROOT_PASSWORD: ${fn.password(16)}
   HTTP_SECRET: ${fn.password(32)}
-  REPO_URL: https://github.com/jelastic/docker-gitlab.git
+  REPO_URL: https://github.com/dimkadt/docker-gitlab.git
   DEPLOY_HOOK: /root/deployLE.sh
   UNDEPLOY_HOOK: /root/undeployLE.sh 
   DEPLOY_HOOK_JS: https://raw.githubusercontent.com/jelastic-jps/gitlab/master/scripts/deployHook.js?_r=${fn.random}    
@@ -101,6 +104,9 @@ nodes:
     JELASTIC_EXPOSE: 80
     RUNNER_TOKEN: ${globals.RUNNER_TOKEN}
     GITLAB_SECRETS_BASE: ${globals.GITLAB_SECRETS_BASE}
+    GITLAB_SECRETS_ARE_PRIMARY: ${globals.GITLAB_SECRETS_ARE_PRIMARY}
+    GITLAB_SECRETS_ARE_DETERMINISTIC: ${globals.GITLAB_SECRETS_ARE_DETERMINISTIC}
+    GITLAB_SECRETS_ARE_SALT: ${globals.GITLAB_SECRETS_ARE_SALT}
     ROOT_PASSWORD: ${globals.ROOT_PASSWORD}
     HTTP_SECRET: ${globals.HTTP_SECRET}
     DB_USER: ${globals.DB_USER}
